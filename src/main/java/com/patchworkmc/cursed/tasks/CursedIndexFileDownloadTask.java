@@ -87,6 +87,8 @@ public class CursedIndexFileDownloadTask extends Task {
 			try (FileWriter infoWriter = new FileWriter(localAddonInfoFile)) {
 				JsonConverter.OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(infoWriter, addon);
 			}
+
+			addonFileWritten = true;
 		}
 
 		try (FileWriter infoWriter = new FileWriter(infoFile)) {
