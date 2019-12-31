@@ -19,6 +19,11 @@ archivesBaseName = 'cursed-tool'
 
 repositories {
 	mavenCentral()
+
+	maven {
+		name 'patchwork'
+		url 'https://dl.bintray.com/patchworkmc/Patchwork-Maven/'
+	}
 }
 
 dependencies {
@@ -26,6 +31,7 @@ dependencies {
 	implementation 'com.fasterxml.jackson.core:jackson-core:2.10.0.pr3'
 	implementation 'com.fasterxml.jackson.core:jackson-annotations:2.10.0.pr3'
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.10.0.pr3'
+	implementation 'com.patchworkmc:application-core:0.1.0'
 }
 
 checkstyle {
