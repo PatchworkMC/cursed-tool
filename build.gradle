@@ -2,8 +2,8 @@ plugins {
 	id 'application'
 	id 'eclipse'
 	id 'idea'
-	id 'maven-publish'
 	id 'checkstyle'
+	id 'net.minecrell.licenser' version '0.4.1'
 }
 
 sourceCompatibility = 1.8
@@ -37,6 +37,11 @@ dependencies {
 checkstyle {
 	configFile = rootProject.file("checkstyle.xml")
 	toolVersion = '8.25'
+}
+
+license {
+	header rootProject.file('LICENSE_HEADER')
+	include '**/*.java'
 }
 
 application {
