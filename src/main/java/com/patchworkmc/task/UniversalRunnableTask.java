@@ -4,7 +4,7 @@ import com.patchworkmc.logging.Logger;
 import com.patchworkmc.util.IThrowingRunnable;
 
 /**
- * {@link Task} for {@link Runnable}s and {@link IThrowingRunnable<Throwable>}s.
+ * {@link Task} for {@link Runnable}s and {@link IThrowingRunnable}s.
  */
 public class UniversalRunnableTask extends Task {
 	private final String name;

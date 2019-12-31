@@ -190,7 +190,7 @@ public class CursedTool {
 		public int workers = Math.max(Runtime.getRuntime().availableProcessors() / 2, 1);
 
 		@Flag(names = "limit", description = "Maximum amount of addons to download")
-		public int limit = 100;
+		public int limit;
 
 		@Flag(names = {"d", "index-dir"}, description = "Path to the directory to store addons in (defaults to addons)")
 		public String indexDir = "addons";
@@ -198,9 +198,8 @@ public class CursedTool {
 		@Parameter(
 				position = 0,
 				name = "game version",
-				description = "The minecraft version for which mods should be searched",
-				required = false
+				description = "The minecraft version for which mods should be searched"
 		)
-		public String gameVersion = "1.12.2";
+		public String gameVersion;
 	}
 }
