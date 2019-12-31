@@ -12,11 +12,25 @@ import com.patchworkmc.json.JsonConverterException;
 import com.patchworkmc.network.http.HttpClient;
 import com.patchworkmc.network.http.HttpException;
 
+/**
+ * Represents the Curse api. Can be used for all kind of interactions with it.
+ */
 public class CurseApi {
+	/**
+	 * Base url of all endpoints.
+	 */
 	public static final String BASE_URL = "https://addons-ecs.forgesvc.net/api/v2";
 
+	// We require a HttpClient for interaction
 	private final HttpClient httpClient;
 
+	/**
+	 * Generate an endpoint url of the specified format.
+	 *
+	 * @param format The format string passed to {@link String#format(String, Object...)}
+	 * @param args   The arguments passed to {@link String#format(String, Object...)}
+	 * @return The formatted combination of format and args appended to {@link CurseApi#BASE_URL} with a /
+	 */
 	private static String makeEndpoint(String format, Object... args) {
 		return BASE_URL + "/" + String.format(format, args);
 	}
@@ -147,7 +161,7 @@ public class CurseApi {
 		try {
 			return httpClient.get(file.getDownloadUrl()).executeAndGetStream();
 		} catch (HttpException e) {
-			throw new CurseException("Failed to retrieve list of files for addon", e);
+			throw new CurseException("Failed to download addon file", e);
 		}
 	}
 }

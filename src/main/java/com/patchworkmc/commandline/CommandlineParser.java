@@ -34,11 +34,12 @@ public class CommandlineParser<T> {
 	public static final MethodHandles.Lookup METHOD_LOOKUP = MethodHandles.lookup();
 
 	// Map of built-in type mappers
-	private static final Map<Class<?>, TypeMapper.Constructor> TYPE_MAPPERS = new HashMap<>();
+	private static final Map<Class<?>, TypeMapper.TypeMapperFactory> TYPE_MAPPERS = new HashMap<>();
 	// To minimize the cost of looking up constructors of user supplied type mappers every time
 	// cache them
 	private static final Map<Class<?>, MethodHandle> CACHED_TYPE_MAPPER_CONSTRUCTORS = new HashMap<>();
 
+	// Initialize the type mappers with defaults
 	static {
 		TYPE_MAPPERS.put(Boolean.class, BooleanTypeMapper::new);
 		TYPE_MAPPERS.put(boolean.class, BooleanTypeMapper::new);
@@ -107,6 +108,14 @@ public class CommandlineParser<T> {
 		return argumentHolder;
 	}
 
+	/**
+	 * Builds the internal accessor cache by reflectively
+	 * checking fields on the class of the target object.
+	 *
+	 * @throws CommandlineException If an error occurs due to reflection problem
+	 *                              or invalid use of parameters passed to the
+	 *                              field annotations
+	 */
 	private void buildAccessors() throws CommandlineException {
 		Class<?> targetClass = argumentHolder.getClass();
 
@@ -123,31 +132,59 @@ public class CommandlineParser<T> {
 			Flag flagAnnotation;
 
 			if ((parameterAnnotation = field.getAnnotation(Parameter.class)) != null) {
+				// First check if a parameter with this index exists already
 				if (unorderedParameters.containsKey(parameterAnnotation.position())) {
 					throw new CommandlineException("Duplicated parameter position " + parameterAnnotation.position());
 				}
 
 				// -1 means collect remaining
 				if (parameterAnnotation.position() == -1) {
+					// Check if the remaining accessor is already set, since
+					// there can only be one
 					if (remainingAccessor != null) {
-						throw new CommandlineException("Duplicated remaining accessor, already have " + remainingAccessor.names()[0] + " and tried to add " + parameterAnnotation.name());
+						throw new CommandlineException("Duplicated remaining accessor, already have "
+								+ remainingAccessor.names()[0] + " and tried to add " + parameterAnnotation.name());
 					} else {
-						remainingAccessor = new FieldAccessor(getTypeMapper(parameterAnnotation.typeMapper(), field), new String[] {parameterAnnotation.name()}, parameterAnnotation.description(), parameterAnnotation.required());
+						remainingAccessor = new FieldAccessor(
+								getTypeMapper(parameterAnnotation.typeMapper(), field),
+								new String[] {parameterAnnotation.name()},
+								parameterAnnotation.description(),
+								parameterAnnotation.required()
+						);
 					}
 				} else if (parameterAnnotation.position() < -1) {
 					throw new IllegalArgumentException("@Parameter{position} cannot be less than -1");
 				}
 
 				// Collect all parameters into our HashMap and associate them with a FieldAccessor
-				unorderedParameters.put(parameterAnnotation.position(), new FieldAccessor(getTypeMapper(parameterAnnotation.typeMapper(), field), new String[] {parameterAnnotation.name()}, parameterAnnotation.description(), parameterAnnotation.required()));
+				unorderedParameters.put(
+						parameterAnnotation.position(),
+						new FieldAccessor(
+								getTypeMapper(parameterAnnotation.typeMapper(), field),
+								new String[] {parameterAnnotation.name()},
+								parameterAnnotation.description(),
+								parameterAnnotation.required()
+						)
+				);
 			} else if ((flagAnnotation = field.getAnnotation(Flag.class)) != null) {
 				// Collect all flags into our List and associate them with a FieldAccessor
-				flagAccessors.add(new FieldAccessor(getTypeMapper(flagAnnotation.typeMapper(), field), flagAnnotation.names(), flagAnnotation.description(), false));
+				flagAccessors.add(new FieldAccessor(
+						getTypeMapper(flagAnnotation.typeMapper(), field),
+						flagAnnotation.names(),
+						flagAnnotation.description(),
+						false)
+				);
 			}
 		}
 
 		// Iterate over a sorted List of entries
-		for (Map.Entry<Integer, FieldAccessor> entry : unorderedParameters.entrySet().stream().sorted(Map.Entry.comparingByKey()).collect(Collectors.toList())) {
+		for (Map.Entry<Integer, FieldAccessor> entry
+				: unorderedParameters
+				.entrySet()
+				.stream()
+				.sorted(Map.Entry.comparingByKey()) // sort them by position
+				.collect(Collectors.toList())
+		) {
 			int index = parameterAccessors.size();
 
 			if (entry.getKey() != index) {
@@ -172,12 +209,21 @@ public class CommandlineParser<T> {
 		}
 	}
 
-	// This creates a type mapper for specified field.
-	// annotatedClass indicates if the user has overridden the mapper type
+	/**
+	 * Creates a retrieves the type mapper for a field.
+	 *
+	 * @param annotatedClass The class the user has specified in the annotation, {@link TypeMapper.NullTypeMapper} if
+	 *                       the user has not explicitly specified it. {@link TypeMapper.NullTypeMapper} causes the
+	 *                       default type mapper to be used.
+	 * @param f              The field to create the mapper for
+	 * @return The type mapper created for the field
+	 * @throws CommandlineException If an error occurs creating the type mapper or if no type mapper suitable
+	 *                              for the field has been found
+	 */
 	@SuppressWarnings("rawtypes")
 	private TypeMapper getTypeMapper(Class<? extends TypeMapper> annotatedClass, Field f) throws CommandlineException {
 		if (annotatedClass != TypeMapper.NullTypeMapper.class) {
-			// The user has specified its own mapper type
+			// The user has specified his own mapper type
 			try {
 				if (CACHED_TYPE_MAPPER_CONSTRUCTORS.containsKey(annotatedClass)) {
 					// We already have a constructor handle for that type, avoid the reflective
@@ -194,11 +240,16 @@ public class CommandlineParser<T> {
 				// Construct the mapper using the found method handle
 				return (TypeMapper) constructor.invoke(argumentHolder, f);
 			} catch (NoSuchMethodException e) {
-				throw new CommandlineException("Creating custom type mapper " + annotatedClass.getName() + " failed due to missing a constructor accepting a Field as the only parameter", e);
+				throw new CommandlineException("Creating custom type mapper "
+						+ annotatedClass.getName()
+						+ " failed due to missing a constructor accepting a Field as the only parameter", e);
 			} catch (IllegalAccessException e) {
-				throw new CommandlineException("Creating custom type mapper " + annotatedClass.getName() + " failed due to bad access rights (invisible constructor?)", e);
+				throw new CommandlineException("Creating custom type mapper "
+						+ annotatedClass.getName()
+						+ " failed due to bad access rights (private/protected constructor?)", e);
 			} catch (Throwable t) {
-				throw new CommandlineException("Creating custom type mapper " + annotatedClass.getName() + " failed due to error in constructor", t);
+				throw new CommandlineException("Creating custom type mapper "
+						+ annotatedClass.getName() + " failed due to error in constructor", t);
 			}
 		} else {
 			Class<?> annotatedType = f.getType();
@@ -227,8 +278,13 @@ public class CommandlineParser<T> {
 		}
 	}
 
-	// This is the real magic which iterates over the supplied string array, parses and finally
-	// applies it
+	/**
+	 * Iterates over the arguments string array and parses it.
+	 *
+	 * @throws CommandlineException If an error occurs processing the arguments. This includes
+	 *                              {@link CommandlineParseException}'s, which should be caught by
+	 *                              the parser and not the user
+	 */
 	private void processArgs() throws CommandlineException {
 		// Keep track of which parameter we accessed last since flags might be offsetting the
 		// position relative to the index of the argument or a parameter might accept multiple
@@ -246,10 +302,12 @@ public class CommandlineParser<T> {
 				if (currentArg.startsWith("--")) {
 					// A long flag supports passing a value by using "="
 					if (currentArg.contains("=")) {
+						// Remove the leading -- and split at the first '=' sign
 						String[] keyValue = currentArg.substring(2).split("=", 2);
 						name = keyValue[0];
 						value = keyValue[1];
 					} else {
+						// Remove the leading --
 						name = currentArg.substring(2);
 					}
 				} else {
@@ -262,9 +320,11 @@ public class CommandlineParser<T> {
 					String trimmed = currentArg.substring(1);
 
 					if (trimmed.length() > 1) {
+						// We have the value directly appended to the flag name
 						name = trimmed.substring(0, 1);
 						value = trimmed.substring(1);
 					} else {
+						// Just the flag name
 						name = trimmed;
 					}
 				}
@@ -288,6 +348,7 @@ public class CommandlineParser<T> {
 								}
 
 								if (accessor.filled()) {
+									// The user has supplied the same flag too many times
 									parseError = "Flag " + currentArg + " used too many times";
 									return;
 								}
@@ -295,6 +356,7 @@ public class CommandlineParser<T> {
 								accessor.set(value);
 							} else {
 								if (value != null) {
+									// The user specified a value but the flag does not accept one
 									parseError = "Unexpected value '" + value + "' for flag " + currentArg;
 									return;
 								} else if (accessor.filled()) {
@@ -302,6 +364,7 @@ public class CommandlineParser<T> {
 									return;
 								}
 
+								// Set the value, since we have none, just pass null
 								accessor.set(null);
 							}
 
@@ -316,6 +379,7 @@ public class CommandlineParser<T> {
 				}
 
 				if (!found) {
+					// The flag with the name the user specified does not exist
 					parseError = "Unknown flag " + currentArg;
 					return;
 				}
@@ -368,8 +432,8 @@ public class CommandlineParser<T> {
 	 * Checks wether the parse succeeded by now. Must be called after {@link
 	 * CommandlineParser#parse()} has been called.
 	 *
-	 * @return {@code true} if parsing succeeded, {@code false} otherwise
-	 * @throws IllegalStateException if called before {@link CommandlineParser#parse()} has been
+	 * @return {@code true} If parsing succeeded, {@code false} otherwise
+	 * @throws IllegalStateException If called before {@link CommandlineParser#parse()} has been
 	 *                               called.
 	 */
 	public boolean parseSucceeded() {
@@ -410,10 +474,20 @@ public class CommandlineParser<T> {
 	 * @param outro          A short text following the commandline description, put copyright and such here,
 	 *                       null if it should
 	 *                       be omitted
+	 * @param appendError    If the error message which caused the parser to fail should be appended to the description.
+	 *                       It is recommended to always set this to true, unless the user requested the help text.
+	 *                       A lot of programs don't tell you why parsing the commandline failed, lets not be like that!
 	 * @param colors         Wether to use colors in the output string
 	 * @return A nice help message based on all parameters and flags
 	 */
-	public String generateHelpMessage(String executableName, String programName, String intro, String outro, boolean colors) {
+	public String generateHelpMessage(
+			String executableName,
+			String programName,
+			String intro,
+			String outro,
+			boolean appendError,
+			boolean colors
+	) {
 		StringBuilder buffer = new StringBuilder();
 		// Generate a simple header
 		buffer.append("Usage: ").append(generateSignature(executableName)).append("\n");
@@ -442,10 +516,18 @@ public class CommandlineParser<T> {
 			for (FieldAccessor accessor : parameterAccessors) {
 				int lineLength = accessor.names()[0].length() + 4;
 				// Apply the required chars:
-				// - "<" & ">" for required parameters
-				// - "[" & "]" for optional ones
-				buffer.append("  ").append(color((accessor.required() ? "<" : "[") + accessor.names()[0] + (accessor.required() ? ">" : "]"), Ansi.Color.GREEN, true, colors)).append("  ");
+				// - '<' & '>' for required parameters
+				// - '[' & ']' for optional ones
+				buffer
+						.append("  ")
+						.append(color(
+								(accessor.required() ? "<" : "[") // Select '<' or '['
+										+ accessor.names()[0] // Parameter name
+										+ (accessor.required() ? ">" : "]"), // Select '>' or '['
+								Ansi.Color.GREEN, true, colors))
+						.append("  ");
 
+				// Build the description
 				appendDescription(buffer, longestParameterNameLength, accessor, lineLength);
 			}
 		}
@@ -520,7 +602,7 @@ public class CommandlineParser<T> {
 			buffer.append("\n").append(outro);
 		}
 
-		if (parseError != null) {
+		if (appendError && parseError != null) {
 			// If we had some parse error, inform the user about what exactly went wrong.
 			// Apparently a lot of programs don't do it, and its really annoying!
 			buffer.append("\n\n").append("Commandline error: ").append(color(parseError, Ansi.Color.RED, true, colors));
@@ -529,8 +611,16 @@ public class CommandlineParser<T> {
 		return buffer.toString().trim();
 	}
 
-	// This method generates an align description of what this flag or parameter does
-	private void appendDescription(StringBuilder buffer, int longestNameLength, FieldAccessor accessor, int lineLength) {
+	/**
+	 * Generate and append an aligned description to a {@link StringBuilder}.
+	 *
+	 * @param buffer            The buffer to append to
+	 * @param longestNameLength The length of the longest name, used for alignment
+	 * @param accessor          The accessor the description should be built for
+	 * @param lineLength        The currently used space on the line, used for alignment
+	 */
+	private void appendDescription(
+			StringBuilder buffer, int longestNameLength, FieldAccessor accessor, int lineLength) {
 		String[] descriptionParts = accessor.description().split("\n");
 
 		for (int i = 0; i < descriptionParts.length; i++) {
@@ -559,7 +649,7 @@ public class CommandlineParser<T> {
 	 *
 	 * @param executableName The executable name, see
 	 *                       {@link CommandlineParser#generateHelpMessage(String, String, String,
-	 *                       String, boolean)} for further information
+	 *                       String, boolean, boolean)} for further information
 	 * @return A short usage
 	 */
 	public String generateSignature(String executableName) {
@@ -579,7 +669,15 @@ public class CommandlineParser<T> {
 		return buffer.toString();
 	}
 
-	// Helper for conditionally coloring a string with Jansi
+	/**
+	 * Conditionally generate a colored string if colors are enabled.
+	 *
+	 * @param str    The string to color
+	 * @param color  The color to use
+	 * @param bright If the color should be bright
+	 * @param colors If the color should actually be applied
+	 * @return A colored version of str if colors is true, else just str
+	 */
 	private String color(String str, Ansi.Color color, boolean bright, boolean colors) {
 		if (colors) {
 			if (bright) {
@@ -592,7 +690,13 @@ public class CommandlineParser<T> {
 		return str;
 	}
 
-	// Helper for repeating a char n times
+	/**
+	 * Repeat a char a specific amount of times.
+	 *
+	 * @param c The char to repeat
+	 * @param n How often the char should be repeated
+	 * @return A string containing {@code n} {@code c}'s
+	 */
 	private String repeat(char c, int n) {
 		return new String(new char[n]).replace('\0', c);
 	}

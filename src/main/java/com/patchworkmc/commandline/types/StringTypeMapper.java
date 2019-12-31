@@ -32,7 +32,7 @@ public class StringTypeMapper extends BasicTypeMapper<String> {
 	/**
 	 * Always returns {@code true} since we need a String to set the field to.
 	 *
-	 * @return Always true
+	 * @return Always {@code true}
 	 */
 	@Override
 	public boolean acceptsValue() {

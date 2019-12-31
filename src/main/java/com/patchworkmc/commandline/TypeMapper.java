@@ -33,7 +33,7 @@ public interface TypeMapper {
 
 	// Helper interface since BiFunction's can't throw
 	@FunctionalInterface
-	interface Constructor {
+	interface TypeMapperFactory {
 		TypeMapper create(Object target, Field f) throws Throwable;
 	}
 

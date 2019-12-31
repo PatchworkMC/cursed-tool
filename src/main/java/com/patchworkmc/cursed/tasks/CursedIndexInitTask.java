@@ -11,12 +11,20 @@ import com.patchworkmc.cursed.CursedIndex;
 import com.patchworkmc.logging.Logger;
 import com.patchworkmc.task.Task;
 
+/**
+ * Root task which initializes the curse index. This includes
+ * things such as retrieving required ID's and creating directories.
+ */
 public class CursedIndexInitTask extends Task {
 	@Override
 	protected boolean run(Logger logger) throws Throwable {
-		CursedIndex.INSTANCE.getScheduler().schedule(new FetchGameIdTask(), true);
-		CursedIndex.INSTANCE.getScheduler().schedule(new FetchModsCategoryTask(), true);
+		// Schedule the fetch of the ID's
+		// Note that the schedule expands the current operation since the initialization depends
+		// on the ID's, so does this task
+		CursedIndex.INSTANCE.scheduler().schedule(new FetchGameIdTask(), true);
+		CursedIndex.INSTANCE.scheduler().schedule(new FetchModsCategoryTask(), true);
 
+		// Check if the index directory exists and create it if required
 		File indexDir = CursedIndex.INSTANCE.indexDir();
 
 		if (!indexDir.exists()) {
@@ -33,21 +41,29 @@ public class CursedIndexInitTask extends Task {
 		return "CursedIndexInit";
 	}
 
+	/**
+	 * Sub task of {@link CursedIndexInitTask} which fetches the minecraft game id.
+	 */
 	static class FetchGameIdTask extends Task {
 		@Override
 		protected boolean run(Logger logger) throws Throwable {
-			List<CurseGame> allGames = CursedIndex.INSTANCE.getCurseApi().getGames();
+			// Request all games from curse
+			List<CurseGame> allGames = CursedIndex.INSTANCE.curseApi().getGames();
 
 			for (CurseGame game : allGames) {
 				logger.trace("Found game with id %d named %s", game.getId(), game.getName());
 
+				// Check if the game slug is minecraft, if so, we found it
 				if (game.getSlug().equals("minecraft")) {
 					logger.info("Found minecraft with game id %d", game.getId());
+
+					// Update the index with the ID
 					CursedIndex.INSTANCE.setMinecraftGameId(game.getId());
 					return true;
 				}
 			}
 
+			// WOOOOSH... minecraft disappeared from curse
 			throw new NoSuchElementException("Failed to find Minecraft in Curse games");
 		}
 
@@ -57,21 +73,30 @@ public class CursedIndexInitTask extends Task {
 		}
 	}
 
+	/**
+	 * Sub task of {@link CursedIndexInitTask} which fetches the mods category id.
+	 */
 	static class FetchModsCategoryTask extends Task {
 		@Override
 		protected boolean run(Logger logger) throws Throwable {
-			List<CurseCategory> allCategories = CursedIndex.INSTANCE.getCurseApi().getCategories();
+			// Request all categories from curse
+			List<CurseCategory> allCategories = CursedIndex.INSTANCE.curseApi().getCategories();
 
 			for (CurseCategory category : allCategories) {
 				logger.trace("Found category with id %d named %s", category.getId(), category.getName());
 
+				// Check if the category slug is mc-mods, if so, we found it
 				if (category.getSlug().equals("mc-mods")) {
 					logger.info("Found minecraft mods category with id %d", category.getId());
+
+					// Update the index with the ID
 					CursedIndex.INSTANCE.setModsCategoryId(category.getId());
 					return true;
 				}
 			}
 
+			// Well, looks like curse does not have minecraft mods anymore, huh?
+			// Or they changed the slug...
 			throw new NoSuchElementException("Failed to find MinecraftMods category in Curse categories");
 		}
 

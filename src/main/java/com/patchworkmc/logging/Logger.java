@@ -157,7 +157,15 @@ public class Logger {
 			messageBuffer.append(" ").append(cause.getClass().getName()).append(": ").append(cause.getLocalizedMessage());
 
 			for (StackTraceElement element : cause.getStackTrace()) {
-				messageBuffer.append("\n    at ").append(element.getClassName()).append(".").append(element.getMethodName()).append("(").append(element.getFileName()).append(":").append(element.getLineNumber()).append(")");
+				messageBuffer.append("\n    at ")
+						.append(element.getClassName())
+						.append(".")
+						.append(element.getMethodName())
+						.append("(")
+						.append(element.getFileName())
+						.append(":")
+						.append(element.getLineNumber())
+						.append(")");
 			}
 
 			cause = cause.getCause();

@@ -41,6 +41,8 @@ public class StreamWriter implements LogWriter {
 		List<byte[]> messages = new ArrayList<>();
 		String prefix = prefix(level, tag);
 
+		// Split the message at \n so that we don't have weird
+		// breaks in the log output
 		for (String part : message.split("\n")) {
 			messages.add((prefix + part + "\n").getBytes());
 		}

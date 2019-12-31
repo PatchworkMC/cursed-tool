@@ -10,6 +10,11 @@ import com.patchworkmc.commandline.CommandlineException;
 import com.patchworkmc.commandline.CommandlineParseException;
 import com.patchworkmc.commandline.CommandlineParser;
 
+/**
+ * Type mapper for converting a flag into an enum.
+ *
+ * @see BasicTypeMapper BasicTypeMapper for the base implementation
+ */
 public class EnumTypeMapper<E extends Enum<E>> extends BasicTypeMapper<Enum<E>> {
 	private final Enum<E>[] enumValues;
 
@@ -65,7 +70,7 @@ public class EnumTypeMapper<E extends Enum<E>> extends BasicTypeMapper<Enum<E>> 
 	/**
 	 * Always true since we require an {@code String} to construct the value of {@code Enum<E>} from.
 	 *
-	 * @return Always true
+	 * @return Always {@code true}
 	 */
 	@Override
 	public boolean acceptsValue() {

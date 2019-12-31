@@ -47,7 +47,7 @@ public class IntegerTypeMapper extends BasicTypeMapper<Integer> {
 	/**
 	 * Always true since we require an {@code String} to construct the {@code int} from.
 	 *
-	 * @return Always true
+	 * @return Always {@code true}
 	 */
 	@Override
 	public boolean acceptsValue() {

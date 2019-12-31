@@ -6,13 +6,23 @@ package com.patchworkmc.commandline;
  * exposed to the user in terms of need of being caught.
  */
 public class CommandlineParseException extends CommandlineException {
-	// Prevent serializable warning.
-	private static final long serialVersionUID = -7779368412304226584L;
-
+	/**
+	 * Creates a new {@link CommandlineParseException} with the specified message.
+	 * This message will be displayed to the user.
+	 *
+	 * @param message The message of the exception
+	 */
 	public CommandlineParseException(String message) {
 		super(message);
 	}
 
+	/**
+	 * Creates a new {@link CommandlineException} with a message and a cause.
+	 * The message will be displayed to the user.
+	 *
+	 * @param message The message of the exception
+	 * @param cause   The exception which caused this exception
+	 */
 	public CommandlineParseException(String message, Throwable cause) {
 		super(message, cause);
 	}
