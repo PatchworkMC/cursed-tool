@@ -1,0 +1,41 @@
+name: Java CI
+
+on:
+  push:
+  pull_request:
+
+common_setup: &common_setup
+  - name: Checkout repo
+    uses: actions/checkout@v1
+  - name: Set up java 8
+    uses: actions/setup-java@v1
+    with:
+      java-version: 8
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      <<: *common_setup
+      - name: Build with gradle
+        uses: eskatos/gradle-command-action@v1
+        with:
+          arguments: build -x checkstyleMain -x checkLicenses
+
+  checkstyle:
+    runs-on: ubuntu-latest
+    steps:
+      <<: *common_setup
+      - name: Check code style
+        uses: eskatos/gradle-command-action@v1
+        with:
+          arguments: checkstyleMain
+
+  license:
+    runs-on: ubuntu-latest
+    steps:
+      <<: *common_setup
+      - name: Check license
+        uses: eskatos/gradle-command-action@v1
+        with:
+          arguments: checkLicenses
