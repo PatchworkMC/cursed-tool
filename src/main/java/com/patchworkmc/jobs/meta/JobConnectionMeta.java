@@ -39,11 +39,23 @@ public class JobConnectionMeta {
 		inputs.put(name, declaration);
 	}
 
+	public Map<String, JobDefinitionToken> getInputs() {
+		return inputs;
+	}
+
 	public void setOutput(Identifier output) {
 		this.output = output;
 	}
 
+	public Identifier getOutput() {
+		return output;
+	}
+
 	public void setValuePool(ValuePool valuePool) {
 		this.valuePool = valuePool;
+	}
+
+	public ValuePool getValuePool() {
+		return valuePool;
 	}
 }

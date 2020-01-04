@@ -1,11 +1,5 @@
 with {
-    gameVersion = 1.12.2;
+    gameVersion = "1.12.2";
     batchSize = 200;
-} do "cursed-tool:fetch-addons" as "Fetch addons" emit addons;
-
-with addons do "cursed-tool:fetch-files" emit onlineFiles;
-
-with {
-    files = onlineFiles;
-    latestOnly = true;
-} do "cursed-tool:download-files" emit files;
+    limit = 4;
+} do "cursed-tool:mod-fetch" emit addons;

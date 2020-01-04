@@ -64,46 +64,47 @@ public class JobPipelineDefinitionTokenizer {
 			} else if (currentTokenText.length() < 1) {
 				currentTokenStart = position.freeze();
 				lastCharPosition = position.freeze();
-				continue;
 			}
 
 			String tokenText = currentTokenText.toString();
 			currentTokenText.setLength(0);
 
-			switch (tokenText) {
-			case "with":
-				tokens.add(new WithKeyword(currentTokenStart, lastCharPosition));
-				break;
+			if (tokenText.length() > 0) {
+				switch (tokenText) {
+				case "with":
+					tokens.add(new WithKeyword(currentTokenStart, lastCharPosition));
+					break;
 
-			case "do":
-				tokens.add(new DoKeyword(currentTokenStart, lastCharPosition));
-				break;
+				case "do":
+					tokens.add(new DoKeyword(currentTokenStart, lastCharPosition));
+					break;
 
-			case "emit":
-				tokens.add(new EmitKeyword(currentTokenStart, lastCharPosition));
-				break;
+				case "emit":
+					tokens.add(new EmitKeyword(currentTokenStart, lastCharPosition));
+					break;
 
-			default:
-				if (Character.isDigit(tokenText.charAt(0)) || tokenText.charAt(0) == '-') {
-					try {
-						if (tokenText.length() > 2 && tokenText.charAt(1) == 'x' && tokenText.charAt(0) != '-') {
-							tokens.add(new Numeral(currentTokenStart, lastCharPosition,
-									Long.parseLong(tokenText.substring(2, 16))));
-						} else if (tokenText.contains(".")) {
-							tokens.add(new DoubleNumeral(currentTokenStart, lastCharPosition,
-									Double.parseDouble(tokenText)));
-						} else {
-							tokens.add(new Numeral(currentTokenStart, lastCharPosition, Long.parseLong(tokenText)));
+				default:
+					if (Character.isDigit(tokenText.charAt(0)) || tokenText.charAt(0) == '-') {
+						try {
+							if (tokenText.length() > 2 && tokenText.charAt(1) == 'x' && tokenText.charAt(0) != '-') {
+								tokens.add(new Numeral(currentTokenStart, lastCharPosition,
+										Long.parseLong(tokenText.substring(2, 16))));
+							} else if (tokenText.contains(".")) {
+								tokens.add(new DoubleNumeral(currentTokenStart, lastCharPosition,
+										Double.parseDouble(tokenText)));
+							} else {
+								tokens.add(new Numeral(currentTokenStart, lastCharPosition, Long.parseLong(tokenText)));
+							}
+						} catch (NumberFormatException e) {
+							throw new JobPipelineDefinitionParseException(currentTokenStart, lastCharPosition,
+									tokenText + " is not a valid number");
 						}
-					} catch (NumberFormatException e) {
-						throw new JobPipelineDefinitionParseException(currentTokenStart, lastCharPosition,
-								tokenText + " is not a valid number");
+					} else {
+						tokens.add(new Identifier(currentTokenStart, lastCharPosition, tokenText));
 					}
-				} else {
-					tokens.add(new Identifier(currentTokenStart, lastCharPosition, tokenText));
-				}
 
-				break;
+					break;
+				}
 			}
 
 			switch (c) {
@@ -125,6 +126,11 @@ public class JobPipelineDefinitionTokenizer {
 
 			case ';':
 				tokens.add(new Semicolon(position.freeze()));
+				break;
+
+			case '\n':
+			case '\0':
+			case ' ':
 				break;
 
 			default:

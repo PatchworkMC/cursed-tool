@@ -21,6 +21,8 @@ package com.patchworkmc.jobs;
 
 import java.util.function.Consumer;
 
+import com.patchworkmc.task.Task;
+
 /**
  * Representation of a single job in a pipeline.
  *
@@ -47,8 +49,9 @@ public abstract class Job<I, O> {
 	 *
 	 * @param input    The input of the iteration
 	 * @param consumer The output consumer of the iteration
+	 * @return A task configured according to input
 	 */
-	public abstract void schedule(I input, Consumer<O> consumer);
+	public abstract Task createTask(I input, Consumer<O> consumer);
 
 	public abstract Class<I> inputType();
 

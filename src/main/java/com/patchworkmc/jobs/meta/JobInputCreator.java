@@ -37,16 +37,69 @@ public class JobInputCreator {
 
 	public void set(String name, Object value) {
 		if (name.equals("this")) {
-			target = inputSetters.get("this").type().cast(value);
+			target = cast(inputSetters.get("this").type(), value);
 			return;
 		}
 
 		InputSetter setter = inputSetters.remove(name);
 
 		try {
-			setter.setter().invoke(target, value);
+			setter.setter().invoke(target, cast(setter.type(), value));
 		} catch (Throwable throwable) {
 			throw new RuntimeException("BUG: Unexpected error while setting value, fix the validation", throwable);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T cast(Class<T> target, Object value) {
+		if (target != value.getClass()) {
+			if (Number.class.isAssignableFrom(getNonPrimitive(target))) {
+				Number number = (Number) value;
+
+				if (target == byte.class || target == Byte.class) {
+					return (T) new Byte(number.byteValue());
+				} else if (target == short.class || target == Short.class) {
+					return (T) new Short(number.shortValue());
+				} else if (target == int.class || target == Integer.class) {
+					return (T) new Integer(number.intValue());
+				} else if (target == long.class || target == Long.class) {
+					return (T) new Long(number.longValue());
+				} else if (target == float.class || target == Float.class) {
+					return (T) new Float(number.floatValue());
+				} else if (target == double.class || target == Double.class) {
+					return (T) new Double(number.doubleValue());
+				}
+			} else {
+				return target.cast(value);
+			}
+		}
+
+		return (T) value;
+	}
+
+	private Class<?> getNonPrimitive(Class<?> maybePrimitive) {
+		if (!maybePrimitive.isPrimitive()) {
+			return maybePrimitive;
+		}
+
+		if (maybePrimitive == byte.class) {
+			return Byte.class;
+		} else if (maybePrimitive == char.class) {
+			return Character.class;
+		} else if (maybePrimitive == short.class) {
+			return Short.class;
+		} else if (maybePrimitive == int.class) {
+			return Integer.class;
+		} else if (maybePrimitive == long.class) {
+			return Long.class;
+		} else if (maybePrimitive == float.class) {
+			return Float.class;
+		} else if (maybePrimitive == double.class) {
+			return Double.class;
+		} else if (maybePrimitive == void.class) {
+			return Void.class;
+		} else {
+			throw new AssertionError("UNREACHABLE");
 		}
 	}
 

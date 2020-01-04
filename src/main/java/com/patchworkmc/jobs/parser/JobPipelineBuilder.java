@@ -149,6 +149,8 @@ public class JobPipelineBuilder {
 			jobPool.onEmit(outputConnection::supply);
 
 			connectionMeta.setOutput(output);
+
+			expectToken("Expected semicolon", Semicolon.class);
 		}
 
 		return connectionMeta;
@@ -245,6 +247,6 @@ public class JobPipelineBuilder {
 	}
 
 	private boolean isNextToken(Class<? extends JobDefinitionToken> clazz) {
-		return clazz.isAssignableFrom(tokens.get(tokenIndex + 1).getClass());
+		return clazz.isAssignableFrom(tokens.get(tokenIndex).getClass());
 	}
 }

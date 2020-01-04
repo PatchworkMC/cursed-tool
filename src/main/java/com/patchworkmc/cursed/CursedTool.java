@@ -19,8 +19,11 @@
 
 package com.patchworkmc.cursed;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.net.URL;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -31,6 +34,12 @@ import com.patchworkmc.commandline.CommandlineParser;
 import com.patchworkmc.commandline.Flag;
 import com.patchworkmc.commandline.Parameter;
 import com.patchworkmc.curse.CurseApi;
+import com.patchworkmc.cursed.jobs.CursedIndexModFetchJob;
+import com.patchworkmc.jobs.JobPipeline;
+import com.patchworkmc.jobs.meta.JobRegistry;
+import com.patchworkmc.jobs.parser.JobPipelineBuilder;
+import com.patchworkmc.jobs.parser.JobPipelineDefinitionTokenizer;
+import com.patchworkmc.jobs.parser.token.JobDefinitionToken;
 import com.patchworkmc.logging.LogLevel;
 import com.patchworkmc.logging.Logger;
 import com.patchworkmc.logging.writer.StreamWriter;
@@ -109,8 +118,20 @@ public class CursedTool {
 		// And initialize it
 		CursedIndex.INSTANCE.init(logger.sub("CursedIndex"), curseAPI, taskScheduler).arm().then(() -> {
 			logger.info("Init done!");
-			allDoneTracker.track(CursedIndex.INSTANCE.downloadLatestAddons(
-					fCommandline.batchSize, fCommandline.limit, fCommandline.gameVersion)).arm();
+
+			JobPipelineDefinitionTokenizer tokenizer = new JobPipelineDefinitionTokenizer(
+					"download-mods.job",
+					resourceToString("/download-mods.job")
+			);
+
+			List<JobDefinitionToken> tokens = tokenizer.parse();
+
+			JobRegistry registry = new JobRegistry();
+			registry.register(new CursedIndexModFetchJob());
+
+			JobPipelineBuilder builder = new JobPipelineBuilder(tokens, registry);
+			JobPipeline pipeline = builder.build();
+			allDoneTracker.track(pipeline.execute(taskScheduler)).arm();
 		});
 
 		allDoneTracker.then(() -> {
@@ -123,6 +144,24 @@ public class CursedTool {
 				}).then(
 				// Exit on a separate thread to not hang the scheduler
 				() -> new Thread(() -> System.exit(exitCode.get())).start());
+	}
+
+	private static String resourceToString(String resource) {
+		try {
+			BufferedInputStream inputStream = new BufferedInputStream(CursedTool.class.getResourceAsStream(resource));
+			byte[] buffer = new byte[4096];
+			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+			while (inputStream.read(buffer, 0, 4096) != -1) {
+				outputStream.write(buffer);
+			}
+
+			inputStream.close();
+
+			return outputStream.toString();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
@@ -217,7 +256,8 @@ public class CursedTool {
 		@Parameter(
 				position = 0,
 				name = "game version",
-				description = "The minecraft version for which mods should be searched"
+				description = "The minecraft version for which mods should be searched",
+				required = false
 		)
 		public String gameVersion;
 	}

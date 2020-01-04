@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.patchworkmc.jobs.meta.JobConnectionMeta;
+import com.patchworkmc.task.TaskScheduler;
+import com.patchworkmc.task.TaskTracker;
 
 /**
  * Top level representation of a pipeline.
@@ -36,5 +38,15 @@ public class JobPipeline {
 
 	public void addJob(JobConnectionMeta job) {
 		jobs.add(job);
+	}
+
+	public TaskTracker execute(TaskScheduler scheduler) {
+		TaskTracker tracker = new TaskTracker(scheduler);
+		jobs.forEach(j -> j.getValuePool().setScheduleCallback((t) -> scheduler.schedule(t, tracker)));
+
+		jobs.get(0).getValuePool().pollStatic();
+		tracker.arm();
+
+		return tracker;
 	}
 }

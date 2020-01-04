@@ -26,6 +26,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import com.patchworkmc.jobs.meta.JobInputCreator;
+import com.patchworkmc.task.Task;
 
 /**
  * Class for collecting input values for jobs.
@@ -35,7 +36,9 @@ public class ValuePool {
 	private final Supplier<JobInputCreator> inputCreatorSupplier;
 	private final Map<String, ValueConnection> staticConnections;
 	private final Queue<JobInputCreator> creators;
+
 	private Consumer<Object> outputConsumer;
+	private Consumer<Task> scheduleCallback;
 
 	@SuppressWarnings("unchecked")
 	public ValuePool(
@@ -82,16 +85,31 @@ public class ValuePool {
 		}
 
 		if (readyOne != null) {
-			job.schedule(job.inputType().cast(readyOne.get()), outputConsumer != null ? outputConsumer : (v) -> {
-			});
+			Task configured = job.createTask(
+					job.inputType().cast(readyOne.get()),
+					outputConsumer != null ? outputConsumer : (v) -> {
+					});
+			scheduleCallback.accept(configured);
 		}
 	}
 
 	public void pollStatic() {
+		if (creators.size() < 1) {
+			creators.add(inputCreatorSupplier.get());
+		}
+
 		for (JobInputCreator creator : creators) {
 			staticConnections.forEach((connectionName, connection) -> {
 				if (creator.requires(connectionName)) {
 					creator.set(connectionName, connection.poll());
+				}
+
+				if (creator.isReady()) {
+					Task configured = job.createTask(
+							job.inputType().cast(creator.get()),
+							outputConsumer != null ? outputConsumer : (v) -> {
+							});
+					scheduleCallback.accept(configured);
 				}
 			});
 		}
@@ -99,5 +117,9 @@ public class ValuePool {
 
 	public void onEmit(Consumer<Object> consumer) {
 		this.outputConsumer = consumer;
+	}
+
+	public void setScheduleCallback(Consumer<Task> scheduleCallback) {
+		this.scheduleCallback = scheduleCallback;
 	}
 }
