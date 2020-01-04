@@ -152,8 +152,7 @@ public class CursedIndex {
 
 		logger.debug("Scheduling initialization task");
 
-		// Schedule the initialization task and arm the tracker,
-		// we don't need it to track further tasks
+		// Schedule the initialization task
 		return scheduler.schedule(new CursedIndexInitTask());
 	}
 
