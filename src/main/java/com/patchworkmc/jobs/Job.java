@@ -55,7 +55,7 @@ public abstract class Job<I, O> {
 
 	public abstract Class<I> inputType();
 
-	public abstract Class<O> outputType();
+	public abstract JobIOType<O> outputType();
 
 	public final String namespace() {
 		return namespace;

@@ -33,14 +33,14 @@ import com.patchworkmc.jobs.parser.token.JobDefinitionToken;
  * Represents a connection between a job output or constant and input.
  */
 public class ValueConnection {
-	private final Class<?> valueType;
+	private final JobIOType<?> type;
 	private final JobDefinitionToken origin;
 	private final List<JobDefinitionToken> usages;
 	private final Set<Consumer<Object>> consumers;
 	private final Supplier<Object> staticSupplier;
 
-	public ValueConnection(Class<?> valueType, JobDefinitionToken origin) {
-		this.valueType = valueType;
+	public ValueConnection(JobIOType<?> type, JobDefinitionToken origin) {
+		this.type = type;
 		this.origin = origin;
 		this.usages = new ArrayList<>();
 		this.consumers = new HashSet<>();
@@ -49,7 +49,7 @@ public class ValueConnection {
 
 	@SuppressWarnings("unchecked")
 	public <T> ValueConnection(Class<T> valueType, JobDefinitionToken origin, Supplier<T> staticSupplier) {
-		this.valueType = valueType;
+		this.type = JobIOType.single(valueType);
 		this.origin = origin;
 		this.usages = Collections.singletonList(origin);
 		this.consumers = new HashSet<>();
@@ -57,7 +57,7 @@ public class ValueConnection {
 	}
 
 	public void supply(Object o) {
-		consumers.forEach(c -> c.accept(valueType.cast(o)));
+		consumers.forEach(c -> c.accept(type.cast(o)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -65,8 +65,8 @@ public class ValueConnection {
 		consumers.add((Consumer<Object>) consumer);
 	}
 
-	public Class<?> getValueType() {
-		return valueType;
+	public JobIOType<?> getType() {
+		return type;
 	}
 
 	public Object poll() {

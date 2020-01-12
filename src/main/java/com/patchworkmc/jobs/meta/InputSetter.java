@@ -21,18 +21,20 @@ package com.patchworkmc.jobs.meta;
 
 import java.lang.invoke.MethodHandle;
 
+import com.patchworkmc.jobs.JobIOType;
+
 public class InputSetter {
-	private final Class<?> type;
+	private final JobIOType<?> type;
 	private final MethodHandle setter;
 	private final boolean optional;
 
-	public InputSetter(Class<?> type, MethodHandle setter, boolean optional) {
+	public InputSetter(JobIOType<?> type, MethodHandle setter, boolean optional) {
 		this.type = type;
 		this.setter = setter;
 		this.optional = optional;
 	}
 
-	public Class<?> type() {
+	public JobIOType<?> type() {
 		return type;
 	}
 

@@ -135,10 +135,10 @@ public class JobPipelineBuilder {
 			if (variables.containsKey(outputName)) {
 				outputConnection = variables.get(outputName);
 
-				if (outputConnection.getValueType().isAssignableFrom(meta.job().outputType())) {
+				if (outputConnection.getType().isCompatible(meta.job().outputType())) {
 					throw new JobPipelineDefinitionParseException(output.startPosition(), output.endPosition(),
 							"Output type " + meta.job().outputType().getName()
-									+ " is not assignable to output type " + outputConnection.getValueType().getName()
+									+ " is not assignable to output type " + outputConnection.getType().getName()
 									+ " which has already been declared");
 				}
 			} else {

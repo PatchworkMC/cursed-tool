@@ -20,7 +20,11 @@
 package com.patchworkmc.jobs.meta;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.patchworkmc.jobs.JobIOType;
 
 public class JobInputCreator {
 	private final Map<String, InputSetter> inputSetters;
@@ -47,6 +51,15 @@ public class JobInputCreator {
 			setter.setter().invoke(target, cast(setter.type(), value));
 		} catch (Throwable throwable) {
 			throw new RuntimeException("BUG: Unexpected error while setting value, fix the validation", throwable);
+		}
+	}
+
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	private <T> T cast(JobIOType<T> target, Object value) {
+		if (target.isList()) {
+			return (T) ((List) value).stream().map(v -> cast(target.getValueType(), v)).collect(Collectors.toList());
+		} else {
+			return (T) cast(target.getValueType(), value);
 		}
 	}
 

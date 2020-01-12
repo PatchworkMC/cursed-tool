@@ -19,13 +19,13 @@
 
 package com.patchworkmc.cursed.jobs;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 import com.patchworkmc.curse.data.CurseAddon;
 import com.patchworkmc.cursed.tasks.CursedIndexModFetchTask;
 import com.patchworkmc.jobs.Job;
+import com.patchworkmc.jobs.JobIOType;
 import com.patchworkmc.jobs.meta.OptionalInput;
 import com.patchworkmc.task.Task;
 
@@ -54,9 +54,8 @@ public class CursedIndexModFetchJob extends Job<CursedIndexModFetchJob.Input, Li
 		return Input.class;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public Class<List<CurseAddon>> outputType() {
-		return (Class<List<CurseAddon>>) ((Object) new ArrayList<CurseAddon>()).getClass();
+	public JobIOType<List<CurseAddon>> outputType() {
+		return JobIOType.list(CurseAddon.class);
 	}
 }

@@ -24,6 +24,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import com.patchworkmc.jobs.Job;
+import com.patchworkmc.jobs.JobIOType;
 import com.patchworkmc.jobs.ValueConnection;
 
 public class JobMeta {
@@ -74,7 +76,7 @@ public class JobMeta {
 		}
 
 		if (SIMPLE_TYPES.contains(inputType)) {
-			inputs.put("this", new InputSetter(inputType, null, entireInputOptional));
+			inputs.put("this", new InputSetter(JobIOType.single(inputType), null, entireInputOptional));
 			return;
 		}
 
@@ -89,8 +91,28 @@ public class JobMeta {
 
 		try {
 			for (Field f : inputType.getDeclaredFields()) {
-				inputs.put(f.getName(), new InputSetter(f.getType(), LOOKUP.unreflectSetter(f),
-						f.getDeclaredAnnotation(OptionalInput.class) != null || entireInputOptional));
+				Class<?> fieldType = f.getType();
+				Class<?> listType = null;
+
+				if (f.getGenericType() instanceof ParameterizedType) {
+					ParameterizedType genericFieldType = (ParameterizedType) f.getGenericType();
+
+					if (fieldType == List.class) {
+						listType = (Class<?>) genericFieldType.getActualTypeArguments()[0];
+					} else {
+						throw new MetaBindException("Got generic field " + f.getName() + " which is not List<?> "
+								+ "on input type " + inputType.getName());
+					}
+				}
+
+				inputs.put(
+						f.getName(),
+						new InputSetter(
+								listType != null ? JobIOType.list(listType) : JobIOType.single(fieldType),
+								LOOKUP.unreflectSetter(f),
+								f.getDeclaredAnnotation(OptionalInput.class) != null || entireInputOptional
+						)
+				);
 			}
 		} catch (IllegalAccessException e) {
 			throw new MetaBindException("Failed to bind setters on " + inputType.getName(), e);
