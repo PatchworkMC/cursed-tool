@@ -43,8 +43,7 @@ public class JobPipeline {
 	public TaskTracker execute(TaskScheduler scheduler) {
 		TaskTracker tracker = new TaskTracker(scheduler);
 		jobs.forEach(j -> j.getValuePool().setScheduleCallback((t) -> scheduler.schedule(t, tracker)));
-
-		jobs.get(0).getValuePool().pollStatic();
+		jobs.forEach(j -> j.getValuePool().pollStatic());
 		tracker.arm();
 
 		return tracker;

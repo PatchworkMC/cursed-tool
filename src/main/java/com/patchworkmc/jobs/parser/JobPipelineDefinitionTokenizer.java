@@ -22,6 +22,7 @@ package com.patchworkmc.jobs.parser;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.patchworkmc.jobs.parser.token.BooleanConstant;
 import com.patchworkmc.jobs.parser.token.ClosingBrace;
 import com.patchworkmc.jobs.parser.token.DoKeyword;
 import com.patchworkmc.jobs.parser.token.DoubleNumeral;
@@ -81,6 +82,14 @@ public class JobPipelineDefinitionTokenizer {
 
 				case "emit":
 					tokens.add(new EmitKeyword(currentTokenStart, lastCharPosition));
+					break;
+
+				case "true":
+					tokens.add(new BooleanConstant(currentTokenStart, lastCharPosition, true));
+					break;
+
+				case "false":
+					tokens.add(new BooleanConstant(currentTokenStart, lastCharPosition, false));
 					break;
 
 				default:

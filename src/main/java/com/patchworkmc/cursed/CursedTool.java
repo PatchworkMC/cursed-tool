@@ -34,6 +34,8 @@ import com.patchworkmc.commandline.CommandlineParser;
 import com.patchworkmc.commandline.Flag;
 import com.patchworkmc.commandline.Parameter;
 import com.patchworkmc.curse.CurseApi;
+import com.patchworkmc.cursed.jobs.CursedIndexFilesDownloadJob;
+import com.patchworkmc.cursed.jobs.CursedIndexFilesFetchJob;
 import com.patchworkmc.cursed.jobs.CursedIndexModFetchJob;
 import com.patchworkmc.jobs.JobPipeline;
 import com.patchworkmc.jobs.meta.JobRegistry;
@@ -128,6 +130,8 @@ public class CursedTool {
 
 			JobRegistry registry = new JobRegistry();
 			registry.register(new CursedIndexModFetchJob());
+			registry.register(new CursedIndexFilesFetchJob());
+			registry.register(new CursedIndexFilesDownloadJob());
 
 			JobPipelineBuilder builder = new JobPipelineBuilder(tokens, registry);
 			JobPipeline pipeline = builder.build();
@@ -242,7 +246,7 @@ public class CursedTool {
 		public boolean noColor;
 
 		@Flag(names = "log-level", description = "Log level to use")
-		public LogLevel logLevel = LogLevel.INFO;
+		public LogLevel logLevel = LogLevel.DEBUG;
 
 		@Flag(names = "workers", description = "Amount of threads to use (default is amount of CPU cores divided by 2)")
 		public int workers = Math.max(Runtime.getRuntime().availableProcessors() / 2, 1);

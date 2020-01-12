@@ -3,3 +3,13 @@ with {
     batchSize = 200;
     limit = 4;
 } do "cursed-tool:mod-fetch" emit addons;
+
+with {
+    addons = addons;
+    gameVersion = "1.12.2";
+} do "cursed-tool:files-fetch" emit onlineFiles;
+
+with {
+    addonFiles = onlineFiles;
+    latestOnly = true;
+} do "cursed-tool:files-download";

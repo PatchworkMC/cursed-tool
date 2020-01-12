@@ -66,7 +66,9 @@ public class JobInputCreator {
 	@SuppressWarnings("unchecked")
 	private <T> T cast(Class<T> target, Object value) {
 		if (target != value.getClass()) {
-			if (Number.class.isAssignableFrom(getNonPrimitive(target))) {
+			Class<?> nonPrimitive = getNonPrimitive(target);
+
+			if (Number.class.isAssignableFrom(nonPrimitive)) {
 				Number number = (Number) value;
 
 				if (target == byte.class || target == Byte.class) {
@@ -82,6 +84,8 @@ public class JobInputCreator {
 				} else if (target == double.class || target == Double.class) {
 					return (T) new Double(number.doubleValue());
 				}
+			} else if (target == boolean.class && nonPrimitive == Boolean.class) {
+				return (T) value;
 			} else {
 				return target.cast(value);
 			}
@@ -95,7 +99,9 @@ public class JobInputCreator {
 			return maybePrimitive;
 		}
 
-		if (maybePrimitive == byte.class) {
+		if (maybePrimitive == boolean.class) {
+			return Boolean.class;
+		} else if (maybePrimitive == byte.class) {
 			return Byte.class;
 		} else if (maybePrimitive == char.class) {
 			return Character.class;
