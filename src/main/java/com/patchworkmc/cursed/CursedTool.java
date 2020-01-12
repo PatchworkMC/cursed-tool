@@ -19,9 +19,8 @@
 
 package com.patchworkmc.cursed;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.net.URL;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +39,7 @@ import com.patchworkmc.cursed.jobs.CursedIndexModFetchJob;
 import com.patchworkmc.jobs.JobPipeline;
 import com.patchworkmc.jobs.meta.JobRegistry;
 import com.patchworkmc.jobs.parser.JobPipelineBuilder;
+import com.patchworkmc.jobs.parser.JobPipelineDefinitionParseException;
 import com.patchworkmc.jobs.parser.JobPipelineDefinitionTokenizer;
 import com.patchworkmc.jobs.parser.token.JobDefinitionToken;
 import com.patchworkmc.logging.LogLevel;
@@ -114,33 +114,55 @@ public class CursedTool {
 		// Prepare the CursedIndex by setting the directory of it
 		CursedIndex.INSTANCE.setIndexDir(new File(fCommandline.indexDir));
 
-		AtomicInteger exitCode = new AtomicInteger(0);
+		AtomicInteger exitCode = new AtomicInteger(-1);
 
 		TaskTracker allDoneTracker = new TaskTracker(taskScheduler);
 		// And initialize it
 		CursedIndex.INSTANCE.init(logger.sub("CursedIndex"), curseAPI, taskScheduler).arm().then(() -> {
 			logger.info("Init done!");
 
+			FileReader reader = new FileReader(fCommandline.jobFile);
+
+			char[] buffer = new char[4096];
+			StringBuilder fileContent = new StringBuilder();
+
+			while (reader.read(buffer) != -1) {
+				fileContent.append(buffer);
+			}
+
+			reader.close();
+
 			JobPipelineDefinitionTokenizer tokenizer = new JobPipelineDefinitionTokenizer(
-					"download-mods.job",
-					resourceToString("/download-mods.job")
+					fCommandline.jobFile,
+					fileContent.toString()
 			);
 
-			List<JobDefinitionToken> tokens = tokenizer.parse();
+			try {
+				List<JobDefinitionToken> tokens = tokenizer.parse();
+				JobRegistry registry = new JobRegistry();
+				registry.register(new CursedIndexModFetchJob());
+				registry.register(new CursedIndexFilesFetchJob());
+				registry.register(new CursedIndexFilesDownloadJob());
 
-			JobRegistry registry = new JobRegistry();
-			registry.register(new CursedIndexModFetchJob());
-			registry.register(new CursedIndexFilesFetchJob());
-			registry.register(new CursedIndexFilesDownloadJob());
-
-			JobPipelineBuilder builder = new JobPipelineBuilder(tokens, registry);
-			JobPipeline pipeline = builder.build();
-			allDoneTracker.track(pipeline.execute(taskScheduler)).arm();
+				JobPipelineBuilder builder = new JobPipelineBuilder(tokens, registry);
+				JobPipeline pipeline = builder.build();
+				allDoneTracker.track(pipeline.execute(taskScheduler)).arm();
+			} catch (JobPipelineDefinitionParseException e) {
+				logger.fatal("Error while parsing job definition file:");
+				String errorText = fileContent.substring(e.getStart().offset(), e.getEnd().offset() + 1);
+				logger.fatal("At %s:%d", e.getStart().filename(), e.getStart().line());
+				logger.fatal(errorText);
+				logger.fatal((new String(new char[errorText.length()]).replace("\0", "^")));
+				logger.fatal("\t%s", e.getMessage());
+				exitCode.set(1);
+			}
 		});
 
 		allDoneTracker.then(() -> {
-			logger.info("All done!");
-			exitCode.set(0);
+			if (exitCode.get() < 0) {
+				logger.info("All done!");
+				exitCode.set(0);
+			}
 		}).except(
 				(e) -> {
 					logger.fatal("Error in main!");
@@ -148,24 +170,6 @@ public class CursedTool {
 				}).then(
 				// Exit on a separate thread to not hang the scheduler
 				() -> new Thread(() -> System.exit(exitCode.get())).start());
-	}
-
-	private static String resourceToString(String resource) {
-		try {
-			BufferedInputStream inputStream = new BufferedInputStream(CursedTool.class.getResourceAsStream(resource));
-			byte[] buffer = new byte[4096];
-			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-			while (inputStream.read(buffer, 0, 4096) != -1) {
-				outputStream.write(buffer);
-			}
-
-			inputStream.close();
-
-			return outputStream.toString();
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
 	}
 
 	/**
@@ -239,9 +243,6 @@ public class CursedTool {
 		@Flag(names = "help", description = "Displays this message")
 		public boolean help;
 
-		@Flag(names = {"b", "batch-size"}, description = "Amount of mods to request from curse at once")
-		public int batchSize = 200;
-
 		@Flag(names = "no-color", description = "Disable colorful logging output")
 		public boolean noColor;
 
@@ -251,18 +252,10 @@ public class CursedTool {
 		@Flag(names = "workers", description = "Amount of threads to use (default is amount of CPU cores divided by 2)")
 		public int workers = Math.max(Runtime.getRuntime().availableProcessors() / 2, 1);
 
-		@Flag(names = "limit", description = "Maximum amount of addons to download")
-		public int limit;
-
 		@Flag(names = {"d", "index-dir"}, description = "Path to the directory to store addons in (defaults to addons)")
 		public String indexDir = "addons";
 
-		@Parameter(
-				position = 0,
-				name = "game version",
-				description = "The minecraft version for which mods should be searched",
-				required = false
-		)
-		public String gameVersion;
+		@Parameter(name = "job-file", description = "Path to the job file which should be executed", position = 0)
+		public String jobFile;
 	}
 }
